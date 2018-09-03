@@ -16,26 +16,6 @@ docker run --net=host -it --rm -e POSTGRES_PASSWORD=password postgres
 docker run --net=host -e DATA_SOURCE_NAME="postgresql://postgres:password@localhost:5432/?sslmode=disable" wrouesnel/postgres_exporter
 ```
 
-## Building and running
-
-The build system is based on [Mage](https://magefile.org)
-
-The default make file behavior is to build the binary:
-```
-$ go get github.com/wrouesnel/postgres_exporter
-$ cd ${GOPATH-$HOME/go}/src/github.com/wrouesnel/postgres_exporter
-$ go run mage.go
-$ export DATA_SOURCE_NAME="postgresql://login:password@hostname:port/dbname"
-$ ./postgres_exporter <flags>
-```
-
-To build the dockerfile, run `go run mage.go docker`.
-
-This will build the docker image as `wrouesnel/postgres_exporter:latest`. This
-is a minimal docker image containing *just* postgres_exporter. By default no SSL
-certificates are included, if you need to use SSL you should either bind-mount
-`/etc/ssl/certs/ca-certificates.crt` or derive a new image containing them.
-
 ### Vendoring
 Package vendoring is handled with [`govendor`](https://github.com/kardianos/govendor)
 
@@ -53,11 +33,11 @@ Package vendoring is handled with [`govendor`](https://github.com/kardianos/gove
 * `extend.query-path`
   Path to a YAML file containing custom queries to run. Check out [`queries.yaml`](queries.yaml)
   for examples of the format.
- 
+
 * `dumpmaps`
   Do not run - print the internal representation of the metric maps. Useful when debugging a custom
   queries file.
-  
+
 * `log.level`
   Set logging level: one of `debug`, `info`, `warn`, `error`, `fatal`
 
@@ -88,7 +68,7 @@ The following environment variables configure the exporter:
   the password to connect with.
 * `DATA_SOURCE_PASS_FILE`
   The same as above but reads the password from a file.
-  
+
 * `PG_EXPORTER_WEB_LISTEN_ADDRESS`
   Address to listen on for web interface and telemetry. Default is `:9187`.
 
@@ -101,7 +81,7 @@ The following environment variables configure the exporter:
 * `PG_EXPORTER_EXTEND_QUERY_PATH`
   Path to a YAML file containing custom queries to run. Check out [`queries.yaml`](queries.yaml)
   for examples of the format.
-  
+
 Settings set by environment variables starting with `PG_` will be overwritten by the corresponding CLI flag if given.
 
 ### Setting the Postgres server's data source name
@@ -136,7 +116,7 @@ The -extend.query-path command-line argument specifies a YAML file containing ad
 Some examples are provided in [queries.yaml](queries.yaml).
 
 ### Disabling default metrics
-To work with non-officially-supported postgres versions you can try disabling (e.g. 8.2.15) 
+To work with non-officially-supported postgres versions you can try disabling (e.g. 8.2.15)
 or a variant of postgres (e.g. Greenplum) you can disable the default metrics with the `--disable-default-metrics`
 flag. This removes all built-in metrics, and uses only metrics defined by queries in the `queries.yaml` file you supply
 (so you must supply one, otherwise the exporter will return nothing but internal statuses and not your database).
