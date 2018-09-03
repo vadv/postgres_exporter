@@ -11,4 +11,7 @@ export GOPATH
 all: ./bin/postgres_exporter
 
 ./bin/postgres_exporter: $(SOURCES)
-	go build -ldflags "-X main.Version=$(VERSION)-$(SHA)" -o bin/postgres_exporter ./cmd/postgres_exporter
+	go build -ldflags "-X main.Version=$(VERSION)-$(SHA)" -o bin/postgres_exporter ./src/postgres_exporter/cmd/postgres_exporter
+
+test:
+	go test -x -v ./src/postgres_exporter/cmd/postgres_exporter
