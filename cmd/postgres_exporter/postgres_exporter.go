@@ -16,9 +16,6 @@ import (
 	"sync"
 	"time"
 
-	"gopkg.in/alecthomas/kingpin.v2"
-	"gopkg.in/yaml.v2"
-
 	"crypto/sha256"
 
 	"github.com/blang/semver"
@@ -190,9 +187,10 @@ var builtinMetricMaps = map[string]map[string]ColumnMapping{
 		"confl_deadlock":   {COUNTER, "Number of queries in this database that have been canceled due to deadlocks", nil, nil},
 	},
 	"pg_locks": {
-		"datname": {LABEL, "Name of this database", nil, nil},
-		"mode":    {LABEL, "Type of Lock", nil, nil},
-		"count":   {GAUGE, "Number of locks", nil, nil},
+		"datname":  {LABEL, "Name of this database", nil, nil},
+		"mode":     {LABEL, "Type of Lock", nil, nil},
+		"locktype": {LABEL, "Type of the lockable object", nil, nil},
+		"count":    {GAUGE, "Number of locks", nil, nil},
 	},
 	"pg_stat_replication": {
 		"procpid":          {DISCARD, "Process ID of a WAL sender process", nil, semver.MustParseRange("<9.2.0")},
@@ -258,24 +256,48 @@ var queryOverrides = map[string][]OverrideQuery{
 	"pg_locks": {
 		{
 			semver.MustParseRange(">0.0.0"),
-			`SELECT pg_database.datname,tmp.mode,COALESCE(count,0) as count
+			`
+			SELECT
+				db.datname,
+				tmp.mode,
+				tmp2.locktype,
+				COALESCE(count,0) as count
 			FROM
-				(
-				  VALUES ('accesssharelock'),
-				         ('rowsharelock'),
-				         ('rowexclusivelock'),
-				         ('shareupdateexclusivelock'),
-				         ('sharelock'),
-				         ('sharerowexclusivelock'),
-				         ('exclusivelock'),
-				         ('accessexclusivelock')
-				) AS tmp(mode) CROSS JOIN pg_database
+			(
+			  VALUES ('accesssharelock'),
+					 ('rowsharelock'),
+					 ('rowexclusivelock'),
+					 ('shareupdateexclusivelock'),
+					 ('sharelock'),
+					 ('sharerowexclusivelock'),
+					 ('exclusivelock'),
+					 ('accessexclusivelock')
+			) AS tmp(mode)
+			CROSS JOIN pg_database db
 			LEFT JOIN
-			  (SELECT database, lower(mode) AS mode,count(*) AS count
-			  FROM pg_locks WHERE database IS NOT NULL
-			  GROUP BY database, lower(mode)
-			) AS tmp2
-			ON tmp.mode=tmp2.mode and pg_database.oid = tmp2.database ORDER BY 1`,
+			  (
+				SELECT
+					database,
+					lower(mode) AS mode,
+					locktype as locktype,
+					count(*) AS count
+			  FROM pg_catalog.pg_locks WHERE database IS NOT NULL
+			  GROUP BY database, lower(mode), locktype
+			) AS tmp2 ON tmp.mode=tmp2.mode and db.oid = tmp2.database
+			LEFT JOIN
+			(
+			  VALUES ('relation'),
+					 ('extend'),
+					 ('page'),
+					 ('tuple'),
+					 ('transactionid'),
+					 ('virtualxid'),
+					 ('object'),
+					 ('userlock'),
+					 ('advisory')
+			) AS tmp3(locktype) ON tmp3.locktype = tmp2.locktype
+			ORDER BY 1;
+			`,
 		},
 	},
 
@@ -321,11 +343,11 @@ var queryOverrides = map[string][]OverrideQuery{
 			FROM
 				(
 				  VALUES ('active'),
-				  		 ('idle'),
-				  		 ('idle in transaction'),
-				  		 ('idle in transaction (aborted)'),
-				  		 ('fastpath function call'),
-				  		 ('disabled')
+						 ('idle'),
+						 ('idle in transaction'),
+						 ('idle in transaction (aborted)'),
+						 ('fastpath function call'),
+						 ('disabled')
 				) AS tmp(state) CROSS JOIN pg_database
 			LEFT JOIN
 			(
