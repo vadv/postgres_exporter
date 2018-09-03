@@ -16,6 +16,9 @@ import (
 	"sync"
 	"time"
 
+	kingpin "gopkg.in/alecthomas/kingpin.v2"
+	yaml "gopkg.in/yaml.v2"
+
 	"crypto/sha256"
 
 	"github.com/blang/semver"
